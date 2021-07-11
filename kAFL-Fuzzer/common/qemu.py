@@ -142,7 +142,7 @@ class qemu:
         elif self.config.argument_values['bios']:
             self.cmd += " -bios " + self.config.argument_values['bios']
         else:
-            assert(False), "Must supply either -bios or -kernel or -vm_overlay/-vm_ram option"
+            assert(False), "Must supply either -bios or -kernel or -vm_dir option"
 
         if self.config.argument_values["macOS"]:
             self.cmd = self.cmd.replace("-nographic -net none",
@@ -474,7 +474,13 @@ class qemu:
         if self.config.argument_values['agent']:
             self.__set_agent()
 
+        log_qemu("Handshake: Send kAFL Connect", self.qemu_id)
+        self.__debug_send(qemu_protocol.CONNECT)
+
+        log_qemu("Handshake: Waiting on Guest Ready", self.qemu_id)
         self.__debug_recv_expect(qemu_protocol.RELEASE + qemu_protocol.PT_TRASHED)
+
+        log_qemu("Handshake: Release VM!", self.qemu_id)
         self.__debug_send(qemu_protocol.RELEASE)
         log_qemu("Stage 1 handshake done [INIT]", self.qemu_id)
 
@@ -639,6 +645,9 @@ class qemu:
             self.crashed = True
         elif value == 2:
             log_qemu("Timeout detected!", self.qemu_id)
+            # might produce better bitmap for timeout events
+            #self.__debug_send(qemu_protocol.FINALIZE)
+            #self.__debug_recv_expect(qemu_protocol.FINALIZE)
             self.timeout = True
         elif value == 3:
             log_qemu("Kasan detected!", self.qemu_id)
